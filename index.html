@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Welcome to 404 Café - Lost? You found the right place. Explore our digital menu filled with premium burgers, refreshing drinks, and comfort desserts.">
+  <title>404 Café | Digital Menu</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Permanent+Marker&family=Special+Elite&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- SVG Filters for Paper Grain and Hand-Drawn Rough Borders -->
+  <svg width="0" height="0" class="svg-filters" aria-hidden="true">
+    <defs>
+      <!-- Rough border sketch distortion -->
+      <filter id="rough-edge">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <!-- Paper grain texture -->
+      <filter id="paper-grain">
+        <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="4" result="noise" />
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.15 0" />
+        <feComposite operator="in" in2="SourceGraphic" />
+        <feBlend mode="multiply" in="SourceGraphic" in2="noise" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Chalkboard Background Grid overlay -->
+  <div class="chalkboard-bg">
+    <div class="chalk-doodles">
+      <!-- We will add interactive SVGs of coffee steam, cup, burger sketch, wheat, and stars -->
+      <svg class="doodle cup" viewBox="0 0 100 100">
+        <path d="M30 40 h40 v30 c0 10 -10 15 -20 15 s-20 -5 -20 -15 z" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="3 3"/>
+        <path d="M70 45 c5 0 10 3 10 8 s-5 8 -10 8" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="2 2"/>
+        <path class="steam steam-1" d="M40 30 c-2 -5 2 -10 0 -15" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+        <path class="steam steam-2" d="M50 32 c1 -5 -2 -10 1 -15" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+        <path class="steam steam-3" d="M60 30 c-1 -5 1 -10 -1 -15" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+      </svg>
+      <svg class="doodle stars" viewBox="0 0 100 100">
+        <path d="M10 20 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 z" fill="rgba(255,255,255,0.15)"/>
+        <path d="M80 50 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1 z" fill="rgba(255,255,255,0.1)"/>
+        <path d="M50 85 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 z" fill="rgba(255,255,255,0.15)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- App Container -->
+  <div class="app-container">
+
+    <!-- Responsive Quick Jump Menu (Mobile-focused navigation) -->
+    <nav class="quick-nav">
+      <button class="nav-btn active" data-target="all">All</button>
+      <button class="nav-btn" data-target="burgers">Burgers</button>
+      <button class="nav-btn" data-target="drinks">Drinks</button>
+      <button class="nav-btn" data-target="desserts">Desserts</button>
+      <button class="nav-btn btn-cart-trigger" id="cart-counter-btn">
+        Order List <span class="cart-badge">0</span>
+      </button>
+    </nav>
+
+    <!-- Main Grid Workspace -->
+    <main class="grid-layout">
+
+      <!-- COLUMN 1 (Burgers) -->
+      <section class="grid-card card-burgers menu-category" id="sec-burgers">
+        <div class="card-inner paper-texture">
+          <!-- Fresh To Order Badge -->
+          <div class="stamp-badge badge-fresh">
+            <svg viewBox="0 0 100 100">
+              <path id="badge-text-path" d="M 15 50 A 35 35 0 1 1 85 50 A 35 35 0 1 1 15 50" fill="none"/>
+              <text fill="#C27129" font-family="'Bebas Neue'" font-size="12" letter-spacing="2">
+                <textPath href="#badge-text-path" startOffset="0%">• FRESH • TO • ORDER • FRESH • TO • ORDER </textPath>
+              </text>
+            </svg>
+            <div class="stamp-inner">
+              <span>NOW</span>
+            </div>
+          </div>
+
+          <h2 class="category-title">BURGERS</h2>
+          <span class="category-subtitle">FOR HUNGER</span>
+
+          <!-- Burgers List -->
+          <div class="menu-items">
+            <!-- Classic Veg Burger -->
+            <div class="menu-item" data-id="veg-burger" data-name="Classic Veg Burger" data-price="89" data-veg="true">
+              <div class="item-header">
+                <span class="item-name">
+                  Classic Veg Burger 
+                  <span class="food-symbol veg" title="Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">89</span>
+              </div>
+              <p class="item-desc">Veg Patty, Lettuce, Pickles, Onion, Secret Sauce</p>
+            </div>
+
+            <!-- Classic Chicken Burger -->
+            <div class="menu-item" data-id="chicken-burger" data-name="Classic Chicken Burger" data-price="99" data-veg="false">
+              <div class="item-header">
+                <span class="item-name">
+                  Classic Chicken Burger 
+                  <span class="food-symbol nonveg" title="Non-Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">99</span>
+              </div>
+              <p class="item-desc">Chicken Patty, Egg, Lettuce, Pickles, Onion, Secret Sauce</p>
+            </div>
+
+            <!-- Classic Beef Burger -->
+            <div class="menu-item" data-id="beef-burger" data-name="Classic Beef Burger" data-price="149" data-veg="false">
+              <div class="item-header">
+                <span class="item-name">
+                  Classic Beef Burger 
+                  <span class="food-symbol nonveg" title="Non-Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">149</span>
+              </div>
+              <p class="item-desc">Beef Patty, Egg, Lettuce, Pickles, Onion, Secret Sauce</p>
+            </div>
+
+            <!-- Smashed Beef burger -->
+            <div class="menu-item" data-id="smashed-beef" data-name="Smashed Beef Burger" data-price="189" data-veg="false">
+              <div class="item-header">
+                <span class="item-name">
+                  Smashed Beef burger 
+                  <span class="food-symbol nonveg" title="Non-Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">189</span>
+              </div>
+              <p class="item-desc">Smashed Beef Patty, Cheese, Egg, Pickles, Caramelized Onion, Secret Sauce</p>
+            </div>
+
+            <!-- Double smashed beef -->
+            <div class="menu-item" data-id="double-smashed" data-name="Double Smashed Beef" data-price="219" data-veg="false">
+              <div class="item-header">
+                <span class="item-name">
+                  Double smashed beef 
+                  <span class="food-symbol nonveg" title="Non-Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">219</span>
+              </div>
+              <p class="item-desc">Double Smashed Beef Patties, Cheese, Egg, Pickles, Caramelized Onion, Secret Sauce</p>
+            </div>
+
+            <!-- Oklahoma smashed -->
+            <div class="menu-item" data-id="oklahoma-smashed" data-name="Oklahoma Smashed" data-price="249" data-veg="false">
+              <div class="item-header">
+                <span class="item-name">
+                  Oklahoma smashed 
+                  <span class="food-symbol nonveg" title="Non-Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">249</span>
+              </div>
+              <p class="item-desc">Smashed Beef Patty, Cheese, Egg, Pickles, Smashed Onion, Secret Sauce</p>
+            </div>
+          </div>
+
+          <!-- Hero Burger Image -->
+          <div class="illustration-container burger-ill">
+            <img src="images/burger.png" alt="Deluxe Double Beef Burger Sketch" class="food-ill">
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 2 TOP (Good Food Blackboard Quote) -->
+      <section class="grid-card chalkboard-panel panel-quote-top">
+        <div class="chalkboard-inner">
+          <p class="quote-text">GOOD FOOD.</p>
+          <p class="quote-text">GOOD MOOD.</p>
+          <p class="quote-text">BETTER PEOPLE.</p>
+          <p class="quote-text highlighted">THAT'S THE RECIPE. <span class="dot-orange"></span></p>
+        </div>
+      </section>
+
+      <!-- COLUMN 2 MIDDLE (404 Café Center Brand Card) -->
+      <section class="grid-card card-brand-center">
+        <div class="card-inner paper-texture text-center">
+          <h1 class="brand-logo">404</h1>
+          <h2 class="brand-sublogo">C A F É <span class="dot-orange"></span></h2>
+          <div class="divider-line"></div>
+          <p class="brand-quote">LOST? YOU FOUND THE RIGHT PLACE.</p>
+        </div>
+      </section>
+
+      <!-- COLUMN 2 SKETCH (Doodle Blackboard Card) -->
+      <section class="grid-card chalkboard-panel panel-sketch-window">
+        <div class="chalkboard-inner flex-center">
+          <svg class="sketch-window-svg" viewBox="0 0 100 120" width="80" height="96">
+            <path d="M20 100 V40 A30 30 0 0 1 80 40 V100 Z" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+            <path d="M20 70 H80" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="2 2"/>
+            <path d="M50 40 V100" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="2 2"/>
+            <!-- Moon -->
+            <path d="M35 25 A 6 6 0 0 1 45 31 A 8 8 0 0 0 35 25" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <!-- Stars -->
+            <circle cx="65" cy="20" r="1" fill="#fff" opacity="0.6"/>
+            <circle cx="58" cy="28" r="1.5" fill="#fff" opacity="0.8"/>
+            <circle cx="68" cy="33" r="1" fill="#fff" opacity="0.4"/>
+            <!-- Coffee cup sitting on window sill -->
+            <rect x="42" y="90" width="16" height="10" rx="2" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)"/>
+            <path d="M58 92 c2 0 4 1 4 3 s-2 3 -4 3" fill="none" stroke="rgba(255,255,255,0.3)"/>
+            <!-- Steam -->
+            <path d="M47 85 q2 -4 -1 -8" fill="none" stroke="rgba(255,255,255,0.2)"/>
+            <path d="M52 86 q-1 -4 2 -8" fill="none" stroke="rgba(255,255,255,0.2)"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- COLUMN 2 BOTTOM (Desserts) -->
+      <section class="grid-card card-desserts menu-category" id="sec-desserts">
+        <div class="card-inner paper-texture">
+          <div class="stamp-badge badge-sweet">
+            <span>SWEET<br>ENDINGS</span>
+          </div>
+
+          <h2 class="category-title">DESSERTS</h2>
+          <span class="category-subtitle">FOR A LITTLE COMFORT</span>
+
+          <!-- Desserts List -->
+          <div class="menu-items">
+            <!-- Classical sando -->
+            <div class="menu-item" data-id="classical-sando" data-name="Classical Sando" data-price="79" data-veg="true">
+              <div class="item-header">
+                <span class="item-name">
+                  Classical sando. 
+                  <span class="food-symbol veg" title="Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">79</span>
+              </div>
+              <p class="item-desc">Soft milk bread, whipped cream, classic filling</p>
+            </div>
+
+            <!-- Classical fruit sando -->
+            <div class="menu-item" data-id="fruit-sando" data-name="Classical Fruit Sando" data-price="109" data-veg="true">
+              <div class="item-header">
+                <span class="item-name">
+                  Classical fruit sando 
+                  <span class="food-symbol veg" title="Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">109</span>
+              </div>
+              <p class="item-desc">Soft milk bread, whipped cream, fresh fruits</p>
+            </div>
+          </div>
+
+          <!-- Dessert Sando Image -->
+          <div class="illustration-container sando-ill">
+            <img src="images/sando.png" alt="Strawberry Fruit Sando Sketch" class="food-ill">
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 3 TOP (Diner Receipt / Table selector Card) -->
+      <section class="grid-card card-receipt">
+        <div class="card-inner paper-texture receipt-style">
+          <div class="receipt-header">
+            <div class="receipt-row font-special">
+              <span>TABLE NO. <input type="text" id="receipt-table-input" value="04" class="receipt-input" maxlength="4" aria-label="Table Number"></span>
+              <span class="time-stamp">TIME: TIME UNKNOWN !</span>
+            </div>
+            <div class="receipt-title-block">
+              <h3 class="receipt-brand">404 CAFÉ <span class="dot-orange"></span></h3>
+              <p class="receipt-tagline">YOUR PLACE. ANYTIME. NO RUSH. JUST REAL.</p>
+            </div>
+            <div class="receipt-location font-special">
+              <p class="loc-pin"><span class="pin-icon">📍</span> MUTHOOR, THIRUVALLA <span class="dot-orange-small"></span></p>
+              <p class="address-details">Opp to Bajaj Showroom, Kaduvettoor Building, SH 1</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 3 MIDDLE (Drinks) -->
+      <section class="grid-card card-drinks menu-category" id="sec-drinks">
+        <div class="card-inner paper-texture">
+          <h2 class="category-title">DRINKS</h2>
+          <span class="category-subtitle">FOR LONG CONVERSATIONS</span>
+
+          <!-- Drinks List -->
+          <div class="menu-items">
+            <!-- Mojito Ultra -->
+            <div class="menu-item" data-id="mojito-ultra" data-name="Mojito Ultra" data-price="99" data-veg="true">
+              <div class="item-header">
+                <span class="item-name">
+                  Mojito Ultra 
+                  <span class="food-symbol veg" title="Vegetarian"></span>
+                </span>
+                <span class="item-dots"></span>
+                <span class="item-price">99</span>
+              </div>
+              <p class="item-desc">Mint, Lime, Blue Curacao, Soda</p>
+            </div>
+
+            <!-- Iced Latte -->
+            <div class="menu-item" data-id="iced-latte" data-name="Iced Latte" data-price="129" data-veg="true">
+              <div class="item-header">
+                <span class="item-name">Iced Latte</span>
+                <span class="item-dots"></span>
+                <span class="item-price">129</span>
+              </div>
+              <p class="item-desc">Milk, Espresso, Ice</p>
+            </div>
+
+            <!-- Iced Chocolate -->
+            <div class="menu-item" data-id="iced-chocolate" data-name="Iced Chocolate" data-price="139" data-veg="true">
+              <div class="item-header">
+                <span class="item-name">Iced Chocolate</span>
+                <span class="item-dots"></span>
+                <span class="item-price">139</span>
+              </div>
+              <p class="item-desc">Chocolate, Milk, Ice</p>
+            </div>
+          </div>
+
+          <!-- Drinks Mojito Image -->
+          <div class="illustration-container mojito-ill">
+            <img src="images/mojito.png" alt="Mojito Ultra Mocktail Sketch" class="food-ill">
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 3 EXTRAS -->
+      <section class="grid-card card-extras">
+        <div class="card-inner paper-texture">
+          <h2 class="category-title-small">EXTRAS</h2>
+          <div class="extras-list">
+            <div class="extra-item" data-id="extra-cheese" data-name="Extra Cheese" data-price="19">
+              <span class="extra-name">Cheese</span>
+              <span class="extra-dots"></span>
+              <span class="extra-price">19</span>
+              <button class="btn-extra-add" aria-label="Add cheese">+</button>
+            </div>
+            <div class="extra-item" data-id="extra-patty" data-name="Extra Patty" data-price="69">
+              <span class="extra-name">Patty</span>
+              <span class="extra-dots"></span>
+              <span class="extra-price">69</span>
+              <button class="btn-extra-add" aria-label="Add patty">+</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 3 BOTTOM (Quote Card) -->
+      <section class="grid-card chalkboard-panel panel-quote-bottom">
+        <div class="chalkboard-inner quote-bottom">
+          <p class="quote-symbol">“</p>
+          <p class="quote-line">THE BEST NIGHTS</p>
+          <p class="quote-line">AREN'T PLANNED.</p>
+          <p class="quote-line">THEY JUST HAPPEN</p>
+          <p class="quote-line highlighted">OVER GOOD FOOD.</p>
+          <p class="quote-line">AND REAL CONVERSATIONS.</p>
+          <p class="quote-symbol quote-end">”</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER / UTILITIES -->
+    <footer class="site-footer">
+      <p>&copy; 2026 404 Café. All rights reserved. Designed for Muthoor, Thiruvalla.</p>
+    </footer>
+  </div>
+
+  <!-- INTERACTIVE WAITER ORDER PANEL (CART DRAWER) -->
+  <div class="cart-drawer-overlay" id="cart-overlay"></div>
+  <aside class="cart-drawer paper-texture" id="cart-drawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title font-special">WAITER'S PAD</h3>
+      <button class="btn-close-drawer" id="close-cart-btn" aria-label="Close Order Panel">&times;</button>
+    </div>
+    
+    <!-- Table selection syncing with the main receipt card -->
+    <div class="drawer-table-sync font-special">
+      <span>TABLE NO:</span>
+      <select id="cart-table-select" class="table-select" aria-label="Select Table">
+        <option value="01">01</option>
+        <option value="02">02</option>
+        <option value="03">03</option>
+        <option value="04" selected>04</option>
+        <option value="05">05</option>
+        <option value="06">06</option>
+        <option value="07">07</option>
+        <option value="08">08</option>
+        <option value="Takeaway">Takeaway</option>
+      </select>
+    </div>
+
+    <div class="order-sheet">
+      <div class="sheet-lines" id="cart-items-container">
+        <!-- Cart items are dynamically injected here -->
+        <p class="empty-cart-msg">No items added to the table order pad yet. Click on any menu item above to add!</p>
+      </div>
+    </div>
+
+    <div class="drawer-footer">
+      <div class="price-summary font-special">
+        <div class="summary-row">
+          <span>Subtotal:</span>
+          <span>₹<span id="cart-subtotal">0</span></span>
+        </div>
+        <div class="summary-row">
+          <span>CGST (2.5%):</span>
+          <span>₹<span id="cart-cgst">0</span></span>
+        </div>
+        <div class="summary-row">
+          <span>SGST (2.5%):</span>
+          <span>₹<span id="cart-sgst">0</span></span>
+        </div>
+        <div class="summary-row total-row">
+          <span>TOTAL:</span>
+          <span>₹<span id="cart-total">0</span></span>
+        </div>
+      </div>
+      
+      <button class="btn-submit-order" id="btn-submit-order">
+        <span>SEND TO KITCHEN</span>
+        <svg class="icon-chef" viewBox="0 0 24 24" width="18" height="18">
+          <path d="M12 2c1.1 0 2 .9 2 2v2h-4V4c0-1.1.9-2 2-2zm6.2 8.3c-.6-.4-1.2-.7-2-1V7H7.8v2.3c-.8.3-1.4.6-2 1C4.3 11 3.5 12.4 3.5 14c0 3.3 2.7 6 6 6h5c3.3 0 6-2.7 6-6 0-1.6-.8-3-2.3-3.7zM10 18H8v-2h2v2zm3 0h-2v-2h2v2zm3 0h-2v-2h2v2z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ITEM DETAIL MODAL -->
+  <div class="modal-overlay" id="detail-modal">
+    <div class="modal-content paper-texture">
+      <button class="btn-close-modal" id="close-modal-btn" aria-label="Close modal">&times;</button>
+      
+      <div class="modal-layout">
+        <!-- Left: Image & Tags -->
+        <div class="modal-visual">
+          <img src="" alt="" id="modal-item-image" class="modal-img">
+          <span class="modal-veg-badge" id="modal-item-veg"></span>
+        </div>
+        
+        <!-- Right: Text & Customization -->
+        <div class="modal-info">
+          <h3 class="modal-item-title" id="modal-item-name">Item Name</h3>
+          <span class="modal-item-price" id="modal-item-price">₹0</span>
+          <p class="modal-item-description" id="modal-item-desc">Item description goes here.</p>
+          
+          <div class="divider-line"></div>
+          
+          <!-- Customizations -->
+          <div class="modal-customizations">
+            <h4 class="custom-title font-special">CUSTOMIZE</h4>
+            
+            <div class="custom-options" id="modal-options-container">
+              <!-- Custom options are dynamically added based on type -->
+            </div>
+          </div>
+
+          <!-- Quantity Selection & Add Button -->
+          <div class="modal-actions">
+            <div class="quantity-selector">
+              <button class="qty-btn" id="btn-qty-minus" aria-label="Decrease quantity">-</button>
+              <span class="qty-val" id="modal-qty-value">1</span>
+              <button class="qty-btn" id="btn-qty-plus" aria-label="Increase quantity">+</button>
+            </div>
+            <button class="btn-add-to-order" id="btn-modal-add">
+              ADD TO TABLE ORDER
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER SUCCESS / DIGITAL RECEIPT MODAL -->
+  <div class="modal-overlay" id="order-success-modal">
+    <div class="modal-content receipt-success paper-texture">
+      <button class="btn-close-modal" id="close-success-btn" aria-label="Close success screen">&times;</button>
+      
+      <div class="success-header">
+        <div class="success-checkmark">
+          <svg viewBox="0 0 52 52">
+            <circle class="success-circle" cx="26" cy="26" r="25" fill="none"/>
+            <path class="success-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+          </svg>
+        </div>
+        <h3 class="success-title font-special">ORDER SENT TO KITCHEN!</h3>
+        <p class="success-subtitle">A waiter will bring your items shortly.</p>
+      </div>
+
+      <div class="divider-line dashed"></div>
+
+      <div class="printed-receipt font-special">
+        <div class="receipt-print-row">
+          <span>RECEIPT ID:</span>
+          <span id="printed-receipt-id">#404-129482</span>
+        </div>
+        <div class="receipt-print-row">
+          <span>TABLE:</span>
+          <span id="printed-table-no">04</span>
+        </div>
+        <div class="receipt-print-row">
+          <span>TIME:</span>
+          <span id="printed-time">23:22 PM</span>
+        </div>
+
+        <div class="divider-line dashed text-center">ITEMS</div>
+        
+        <div class="printed-items" id="printed-items-list">
+          <!-- Dynamic listing -->
+        </div>
+
+        <div class="divider-line dashed"></div>
+
+        <div class="receipt-print-row receipt-grand-total">
+          <span>GRAND TOTAL:</span>
+          <span>₹<span id="printed-total">0</span></span>
+        </div>
+      </div>
+
+      <div class="divider-line dashed"></div>
+
+      <!-- QR Code mock to mimic restaurant workflow -->
+      <div class="qr-code-section text-center">
+        <p class="qr-text">Scan to pay or add more items</p>
+        <div class="qr-placeholder">
+          <!-- We can build a neat CSS-styled custom QR code grid or icon -->
+          <svg viewBox="0 0 100 100" class="qr-svg">
+            <!-- Outer borders -->
+            <rect x="10" y="10" width="25" height="25" fill="none" stroke="#1D1D1C" stroke-width="6"/>
+            <rect x="15" y="15" width="15" height="15" fill="#1D1D1C"/>
+            <rect x="65" y="10" width="25" height="25" fill="none" stroke="#1D1D1C" stroke-width="6"/>
+            <rect x="70" y="15" width="15" height="15" fill="#1D1D1C"/>
+            <rect x="10" y="65" width="25" height="25" fill="none" stroke="#1D1D1C" stroke-width="6"/>
+            <rect x="15" y="70" width="15" height="15" fill="#1D1D1C"/>
+            <!-- Random blocks to simulate QR -->
+            <rect x="45" y="15" width="8" height="8" fill="#1D1D1C"/>
+            <rect x="53" y="23" width="8" height="8" fill="#1D1D1C"/>
+            <rect x="45" y="38" width="15" height="8" fill="#1D1D1C"/>
+            <rect x="75" y="45" width="15" height="8" fill="#1D1D1C"/>
+            <rect x="45" y="65" width="8" height="20" fill="#1D1D1C"/>
+            <rect x="58" y="75" width="15" height="8" fill="#1D1D1C"/>
+            <rect x="78" y="65" width="8" height="18" fill="#1D1D1C"/>
+            <rect x="15" y="45" width="12" height="8" fill="#1D1D1C"/>
+          </svg>
+        </div>
+        <p class="qr-footer">Thank you for dining at 404 Café!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Element for Retro Typewriter Order Sound Effect -->
+  <audio id="sound-typewriter" src="https://assets.mixkit.co/active_storage/sfx/2453/2453-84.wav" preload="auto"></audio>
+
+  <!-- Script file -->
+  <script src="app.js"></script>
+</body>
+</html>
