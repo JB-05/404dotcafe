@@ -10,6 +10,7 @@
     "client": "npm run dev --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "seed": "node seed.js",
+    "postinstall": "npm install --prefix client",
     "build": "npm run build --prefix client"
   },
   "dependencies": {
