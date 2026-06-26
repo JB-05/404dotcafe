@@ -61,21 +61,20 @@ Use the `https://….ngrok-free.app` URL as `NEXT_PUBLIC_API_URL` in Vercel.
 
 ## Step 3 — Deploy frontend on Vercel
 
-1. [vercel.com](https://vercel.com) → **Add New Project** → import GitHub repo
-2. **Before clicking Deploy** — open **Edit** next to Root Directory:
+### Option A — Root Directory (recommended)
 
-   | Setting | Value |
-   |---------|--------|
-   | **Root Directory** | `frontend` ← **required** |
-   | **Framework Preset** | Next.js (auto after root is set) |
-   | **Output Directory** | *(leave empty — never `client/dist`)* |
+1. [vercel.com](https://vercel.com) → your project → **Settings** → **General**
+2. **Root Directory** → **Edit** → type exactly: `frontend` (no `./`, no slash at end)
+3. Save → **Deployments** → **Redeploy**
+4. Under **Build & Development**: Framework = **Next.js**, Output Directory = **empty**
 
-   **If you skip this**, Vercel reads the repo-root `package.json` (legacy Express app, no `next`) and fails with:
-   `No Next.js version detected` or `client/dist` errors.
+### Option B — Repo root (fallback)
 
-   **Already created the project?** Settings → General → Root Directory → `frontend` → Save → Redeploy.
+If Root Directory cannot be set, push the root `vercel.json` (builds `frontend/package.json` via `@vercel/next`). Redeploy after push.
 
-3. **Environment variables** (Production + Preview):
+### Either way — env vars and deploy
+
+1. **Environment variables** (Production + Preview):
 
    | Name | Example |
    |------|---------|

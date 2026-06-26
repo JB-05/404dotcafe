@@ -1,7 +1,8 @@
 {
   "name": "404-cafe-mern",
   "version": "1.0.0",
-  "description": "MERN Stack Digital Menu Website for 404 Café",
+  "private": true,
+  "description": "404 Café — legacy MERN prototype at repo root; CafeOS Next.js app is in frontend/",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,9 +10,9 @@
     "client-install": "npm install --prefix client",
     "client": "npm run dev --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev:cafeos": "npm run dev --prefix frontend",
     "seed": "node seed.js",
-    "postinstall": "npm install --prefix client",
-    "build": "npm run build --prefix client"
+    "build:legacy": "npm run build --prefix client"
   },
   "dependencies": {
     "cors": "^2.8.5",
