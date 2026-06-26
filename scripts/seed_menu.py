@@ -6,9 +6,10 @@ import json
 import sys
 from pathlib import Path
 
-# Allow running from repo root or backend dir
-ROOT = Path(__file__).resolve().parent.parent
-BACKEND = ROOT / "backend"
+# Allow running from repo root, backend dir, or Docker (/app + /scripts)
+SCRIPTS_DIR = Path(__file__).resolve().parent
+ROOT = SCRIPTS_DIR.parent
+BACKEND = ROOT / "backend" if (ROOT / "backend" / "main.py").exists() else Path("/app")
 sys.path.insert(0, str(BACKEND))
 
 from sqlalchemy import select
@@ -17,7 +18,7 @@ from core.database import AsyncSessionLocal
 from core.security import hash_password
 from models import Cafe, MenuCategory, MenuItem, User, UserRole
 
-MENU_FILE = ROOT / "scripts" / "legacy_menu.json"
+MENU_FILE = SCRIPTS_DIR / "legacy_menu.json"
 
 CATEGORY_MAP = {
     "burgers": ("Burgers", "burgers", 1),

@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchMenu } from "@/lib/api";
-import { useCart } from "@/stores/cart";
+import { ItemModal } from "@/components/ItemModal";
+import type { MenuItem } from "@/lib/api";
+import { useCart, useCartCount } from "@/stores/cart";
 
 export default function MenuPage() {
   const { data, isLoading, error } = useQuery({ queryKey: ["menu"], queryFn: fetchMenu });
+  const count = useCartCount();
   const addItem = useCart((s) => s.addItem);
-  const count = useCart((s) => s.count());
+  const [selected, setSelected] = useState<MenuItem | null>(null);
 
   return (
     <div className="min-h-screen">
@@ -32,9 +36,7 @@ export default function MenuPage() {
         {error && (
           <div className="paper-card p-4 text-sm">
             <p className="font-semibold">API not reachable</p>
-            <p className="mt-1 opacity-80">
-              Start Postgres + backend, then run migrations and seed. See README.
-            </p>
+            <p className="mt-1 opacity-80">Start Postgres + backend, then run migrations and seed.</p>
           </div>
         )}
 
@@ -49,7 +51,11 @@ export default function MenuPage() {
                   key={item.id}
                   className="flex items-start justify-between gap-3 border-b border-black/10 pb-3 last:border-0"
                 >
-                  <div>
+                  <button
+                    type="button"
+                    className="text-left flex-1"
+                    onClick={() => setSelected(item)}
+                  >
                     <p className="font-medium">
                       {item.name}
                       <span className="ml-2 text-xs opacity-60">{item.veg ? "VEG" : "NON-VEG"}</span>
@@ -57,23 +63,36 @@ export default function MenuPage() {
                     {item.description && (
                       <p className="text-sm opacity-70 mt-0.5">{item.description}</p>
                     )}
-                  </div>
+                  </button>
                   <div className="text-right shrink-0">
                     <p className="font-semibold">₹{item.price}</p>
-                    <button
-                      type="button"
-                      disabled={!item.available}
-                      onClick={() =>
-                        addItem({
-                          id: item.external_id,
-                          name: item.name,
-                          price: item.price,
-                        })
-                      }
-                      className="mt-1 text-xs rounded bg-[var(--color-ink)] text-white px-2 py-1 disabled:opacity-40"
-                    >
-                      Add
-                    </button>
+                    {category.slug === "addons" ? (
+                      <button
+                        type="button"
+                        disabled={!item.available}
+                        onClick={() =>
+                          addItem({
+                            externalId: item.external_id,
+                            name: item.name,
+                            price: item.price,
+                            quantity: 1,
+                            customizations: [],
+                          })
+                        }
+                        className="mt-1 text-xs rounded bg-[var(--color-ink)] text-white px-2 py-1 disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!item.available}
+                        onClick={() => setSelected(item)}
+                        className="mt-1 text-xs rounded bg-[var(--color-ink)] text-white px-2 py-1 disabled:opacity-40"
+                      >
+                        Add
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}
@@ -81,6 +100,8 @@ export default function MenuPage() {
           </section>
         ))}
       </main>
+
+      {selected && <ItemModal item={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }

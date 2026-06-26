@@ -41,9 +41,14 @@ docker compose up -d postgres redis
 ### 3. Backend
 
 ```bash
+# One-time setup (creates isolated venv — avoids global pydantic v1 conflicts)
+scripts\setup-backend.bat
+
+# Activate venv (Windows)
+backend\.venv\Scripts\activate
 cd backend
-cp .env.example .env
-pip install -r requirements.txt
+
+cp .env.example .env   # or: copy .env.example .env
 alembic upgrade head
 python ../scripts/seed_menu.py
 uvicorn main:app --reload
@@ -76,7 +81,19 @@ Change these before production.
 
 ## Deploy
 
-- **Frontend:** Vercel, root directory `frontend`
+### Vercel (frontend — testing)
+
+See **[docs/VERCEL_TESTING.md](docs/VERCEL_TESTING.md)** for step-by-step setup.
+
+Quick summary:
+
+1. **Root Directory:** `frontend` in Vercel project settings
+2. **Env vars:** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` (your public API URL)
+3. **API:** Vercel does not run FastAPI — use [Render](render.yaml) or a VPS for the backend
+
+### Production
+
+- **Frontend:** Vercel + custom domain `menu.404cafe.in`
 - **Backend:** VPS + Docker (see `docs/CAFEOS_EXECUTION_PLAN.md` Step 13)
 
 ## Docs
@@ -91,8 +108,9 @@ Change these before production.
 - [x] FastAPI + auth + menu API
 - [x] DB schema + migrations + seed
 - [x] Next.js menu + cart + checkout shell
-- [ ] Order creation API (Step 5)
-- [ ] POS + payment (Step 6)
+- [x] Order creation API (Step 5)
+- [x] Customer checkout + order tracking (PENDING_PAYMENT)
+- [x] POS + payment verification (Step 6)
 - [ ] Kitchen + WebSockets (Step 7)
 - [ ] Invoices (Step 8)
 - [ ] Inventory + finance (Step 9–10)

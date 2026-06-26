@@ -1,0 +1,36 @@
+# Optional: free backend + Postgres for testing Vercel frontend.
+# Deploy at https://render.com → New → Blueprint → connect this repo.
+# Then set FRONTEND_URL to your Vercel URL and run migrations (see docs/VERCEL_TESTING.md).
+
+services:
+  - type: web
+    name: cafeos-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    preDeployCommand: alembic upgrade head
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cafeos-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://REPLACE-WITH-YOUR-VERCEL-URL.vercel.app
+      - key: CAFE_ID
+        value: "1"
+      - key: CAFE_NAME
+        value: 404 Café
+      - key: REDIS_URL
+        value: redis://localhost:6379/0
+
+databases:
+  - name: cafeos-db
+    plan: free
+    databaseName: cafeos
+    user: cafeos

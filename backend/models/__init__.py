@@ -67,3 +67,22 @@ class MenuItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     category: Mapped["MenuCategory"] = relationship(back_populates="items")
+    recipes: Mapped[list["MenuItemRecipe"]] = relationship(
+        "MenuItemRecipe", back_populates="menu_item", cascade="all, delete-orphan"
+    )
+
+
+from models.order import Order, OrderItem, OrderStatus, PaymentStatus  # noqa: E402, F401
+from models.inventory import (  # noqa: E402, F401
+    InventoryItem,
+    MenuItemRecipe,
+    StockMovement,
+    StockMovementReason,
+    StockUnit,
+)
+from models.finance import (  # noqa: E402, F401
+    BillingCycle,
+    DailyFinancialSnapshot,
+    FixedExpense,
+    VariableExpense,
+)
