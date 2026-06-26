@@ -25,11 +25,19 @@ Commit and push `main` so Vercel can build from the repo.
 1. Go to [render.com](https://render.com) → **New** → **Blueprint**
 2. Connect repo `404dotcafe`
 3. Render reads `render.yaml` (Postgres + API container)
-4. Migrations run automatically on each container start (see `backend/docker-entrypoint.sh`). After first deploy, open **Shell** on the API service and seed data:
+4. On each deploy/start, the container automatically runs migrations **and** seeds (menu + inventory). No Render Shell needed on the free tier.
 
-   ```bash
-   python /scripts/seed_menu.py
-   python /scripts/seed_inventory.py
+   **Optional — seed from your PC** if the API is up but the menu is empty:
+
+   1. Render → **cafeos-db** → **Connections** → copy **External Database URL**
+   2. Locally (PowerShell):
+
+   ```powershell
+   cd backend
+   .venv\Scripts\activate
+   $env:DATABASE_URL = "postgresql+asyncpg://..."  # paste URL; postgres:// also works
+   python ..\scripts\seed_menu.py
+   python ..\scripts\seed_inventory.py
    ```
 
 5. Set **FRONTEND_URL** on the API service to your Vercel URL (step 3)
@@ -54,15 +62,18 @@ Use the `https://….ngrok-free.app` URL as `NEXT_PUBLIC_API_URL` in Vercel.
 ## Step 3 — Deploy frontend on Vercel
 
 1. [vercel.com](https://vercel.com) → **Add New Project** → import GitHub repo
-2. **Important settings:**
+2. **Before clicking Deploy** — open **Edit** next to Root Directory:
 
    | Setting | Value |
    |---------|--------|
    | **Root Directory** | `frontend` ← **required** |
-   | **Framework Preset** | Next.js |
+   | **Framework Preset** | Next.js (auto after root is set) |
    | **Output Directory** | *(leave empty — never `client/dist`)* |
 
-   If Root Directory is blank, Vercel runs the legacy root `npm run build` → `client/dist` and fails.
+   **If you skip this**, Vercel reads the repo-root `package.json` (legacy Express app, no `next`) and fails with:
+   `No Next.js version detected` or `client/dist` errors.
+
+   **Already created the project?** Settings → General → Root Directory → `frontend` → Save → Redeploy.
 
 3. **Environment variables** (Production + Preview):
 
@@ -106,8 +117,10 @@ Redeploy/restart the API. Vercel preview URLs (`*.vercel.app`) are already allow
 
 | Problem | Fix |
 |---------|-----|
-| **Build failed: `client/dist` / no entrypoint** | Vercel is building the **legacy** Vite app. In Project → **Settings** → **General**: set **Root Directory** to `frontend`, save, redeploy. Under **Build & Development**: set **Framework Preset** to **Next.js**, clear **Output Directory** override (leave blank). |
-| Menu empty / network error | Wrong `NEXT_PUBLIC_API_URL`; API asleep (Render free tier) |
+| **No Next.js version detected** | Root Directory is not `frontend`. Settings → General → Root Directory → `frontend` → Redeploy. |
+| **Build failed: `client/dist` / no entrypoint** | Same fix — Root Directory must be `frontend`, not repo root. |
+| Menu empty / network error | Wrong `NEXT_PUBLIC_API_URL`; API asleep (Render free tier); wait for redeploy after push (seeds run on startup) |
+| Empty menu after deploy | Redeploy API service, or run seeds locally with Render **External Database URL** (see Step 2) |
 | CORS error in browser | Set `FRONTEND_URL` on backend to exact Vercel URL |
 | WebSocket fails | Use `wss://` not `ws://`; Render supports WebSockets |
 | 404 on `/pos`, `/admin` | Root Directory must be `frontend` (not repo root) |

@@ -83,13 +83,9 @@ Change these before production.
 
 ### Vercel (frontend — testing)
 
-See **[docs/VERCEL_TESTING.md](docs/VERCEL_TESTING.md)** for step-by-step setup.
+See **[docs/VERCEL_TESTING.md](docs/VERCEL_TESTING.md)**.
 
-Quick summary:
-
-1. **Root Directory:** `frontend` in Vercel project settings
-2. **Env vars:** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` (your public API URL)
-3. **API:** Vercel does not run FastAPI — use [Render](render.yaml) or a VPS for the backend
+**Critical:** In Vercel project settings, set **Root Directory** to `frontend`. Without this, the build fails (`No Next.js version detected` or `client/dist` errors).
 
 ### Production
 
