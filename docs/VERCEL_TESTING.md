@@ -25,7 +25,7 @@ Commit and push `main` so Vercel can build from the repo.
 1. Go to [render.com](https://render.com) → **New** → **Blueprint**
 2. Connect repo `404dotcafe`
 3. Render reads `render.yaml` (Postgres + API container)
-4. Migrations run automatically (`preDeployCommand`). After first deploy, open **Shell** on the API service:
+4. Migrations run automatically on each container start (see `backend/docker-entrypoint.sh`). After first deploy, open **Shell** on the API service and seed data:
 
    ```bash
    python /scripts/seed_menu.py
@@ -58,8 +58,11 @@ Use the `https://….ngrok-free.app` URL as `NEXT_PUBLIC_API_URL` in Vercel.
 
    | Setting | Value |
    |---------|--------|
-   | **Root Directory** | `frontend` |
-   | Framework | Next.js (auto) |
+   | **Root Directory** | `frontend` ← **required** |
+   | **Framework Preset** | Next.js |
+   | **Output Directory** | *(leave empty — never `client/dist`)* |
+
+   If Root Directory is blank, Vercel runs the legacy root `npm run build` → `client/dist` and fails.
 
 3. **Environment variables** (Production + Preview):
 
@@ -103,6 +106,7 @@ Redeploy/restart the API. Vercel preview URLs (`*.vercel.app`) are already allow
 
 | Problem | Fix |
 |---------|-----|
+| **Build failed: `client/dist` / no entrypoint** | Vercel is building the **legacy** Vite app. In Project → **Settings** → **General**: set **Root Directory** to `frontend`, save, redeploy. Under **Build & Development**: set **Framework Preset** to **Next.js**, clear **Output Directory** override (leave blank). |
 | Menu empty / network error | Wrong `NEXT_PUBLIC_API_URL`; API asleep (Render free tier) |
 | CORS error in browser | Set `FRONTEND_URL` on backend to exact Vercel URL |
 | WebSocket fails | Use `wss://` not `ws://`; Render supports WebSockets |
