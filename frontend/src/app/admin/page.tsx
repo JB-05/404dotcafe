@@ -1,0 +1,8 @@
+export default function AdminPage() {
+  return (
+    <div className="min-h-screen p-8">
+      <h1 className="font-[family-name:var(--font-bebas)] text-4xl">ADMIN</h1>
+      <p className="mt-2 text-white/60">Analytics & inventory — Step 9–10</p>
+    </div>
+  );
+}
