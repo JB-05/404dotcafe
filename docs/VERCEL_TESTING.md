@@ -63,16 +63,28 @@ Use the `https://….ngrok-free.app` URL as `NEXT_PUBLIC_API_URL` in Vercel.
 
 ### Option A — Root Directory (recommended)
 
-1. [vercel.com](https://vercel.com) → your project → **Settings** → **General**
-2. **Root Directory** → **Edit** → type exactly: `frontend` (no `./`, no slash at end)
-3. Save → **Deployments** → **Redeploy**
-4. Under **Build & Development**: Framework = **Next.js**, Output Directory = **empty**
+1. Vercel → your project → **Settings** → **General**
+2. **Root Directory** → `frontend` (exactly — no `./`, no trailing slash)
+3. **Settings** → **Build and Deployment** — turn **OFF** all overrides:
 
-### Option B — Repo root (fallback)
+   | Setting | Value |
+   |---------|--------|
+   | Framework Preset | Next.js |
+   | Build Command | *(Override OFF — default `npm run build`)* |
+   | Install Command | *(Override OFF — default `npm install`)* |
+   | **Output Directory** | *(Override OFF — must NOT be `client/dist`)* |
 
-If Root Directory cannot be set, push the root `vercel.json` (builds `frontend/package.json` via `@vercel/next`). Redeploy after push.
+   The `client/dist` error means an old Vite setting is still enabled. **Delete** any value in Output Directory and disable the override toggle.
 
-### Either way — env vars and deploy
+4. **Deployments** → **Redeploy**
+
+There must be **no** `vercel.json` at the repo root (only `frontend/vercel.json`). A root file with `npm install --prefix frontend` breaks when Root Directory is already `frontend`.
+
+### Option B — Repo root (not recommended)
+
+Only use if Root Directory is blank. Do not combine repo-root config with Root Directory = `frontend`.
+
+### Env vars and deploy
 
 1. **Environment variables** (Production + Preview):
 
@@ -116,8 +128,9 @@ Redeploy/restart the API. Vercel preview URLs (`*.vercel.app`) are already allow
 
 | Problem | Fix |
 |---------|-----|
-| **No Next.js version detected** | Root Directory is not `frontend`. Settings → General → Root Directory → `frontend` → Redeploy. |
-| **Build failed: `client/dist` / no entrypoint** | Same fix — Root Directory must be `frontend`, not repo root. |
+| **ENOENT `frontend/frontend/package.json`** | Root Directory is `frontend` but install command still uses `--prefix frontend`. Delete repo-root `vercel.json`; disable Install Command override in Vercel. |
+| **`client/dist` not found** | Turn **OFF** Output Directory override in Build settings (legacy Vite path). |
+| **No Next.js version detected** | Root Directory must be `frontend`. |
 | Menu empty / network error | Wrong `NEXT_PUBLIC_API_URL`; API asleep (Render free tier); wait for redeploy after push (seeds run on startup) |
 | Empty menu after deploy | Redeploy API service, or run seeds locally with Render **External Database URL** (see Step 2) |
 | CORS error in browser | Set `FRONTEND_URL` on backend to exact Vercel URL |
