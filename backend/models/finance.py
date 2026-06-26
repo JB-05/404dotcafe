@@ -8,6 +8,7 @@ from core.database import Base
 
 
 class BillingCycle(str, enum.Enum):
+    DAILY = "DAILY"
     MONTHLY = "MONTHLY"
     YEARLY = "YEARLY"
 

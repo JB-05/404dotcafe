@@ -5,22 +5,23 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchOrder } from "@/lib/api";
 import { useOrderSocket } from "@/hooks/useOrderSocket";
 
-const STEPS = [
-  "PENDING_PAYMENT",
-  "PAID",
-  "IN_PREPARATION",
-  "READY",
-  "COMPLETED",
-] as const;
+const STEPS = ["PENDING_PAYMENT", "PAID", "COMPLETED"] as const;
 
 const STEP_LABELS: Record<string, string> = {
   PENDING_PAYMENT: "Pending Payment",
   PAID: "Paid",
-  IN_PREPARATION: "Preparing",
-  READY: "Ready",
+  IN_PREPARATION: "Paid",
+  READY: "Paid",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
+
+function stepIndex(status: string) {
+  if (status === "CANCELLED") return -1;
+  if (status === "COMPLETED") return 2;
+  if (status === "PENDING_PAYMENT") return 0;
+  return 1;
+}
 
 export function OrderTrackClient({ orderId }: { orderId: string }) {
   const id = parseInt(orderId, 10);
@@ -50,10 +51,8 @@ export function OrderTrackClient({ orderId }: { orderId: string }) {
     );
   }
 
-  const currentIdx =
-    data.order_status === "CANCELLED"
-      ? -1
-      : STEPS.indexOf(data.order_status as (typeof STEPS)[number]);
+  const currentIdx = stepIndex(data.order_status);
+  const activeLabel = STEP_LABELS[data.order_status] ?? data.order_status;
 
   return (
     <div className="min-h-screen px-4 py-8">
@@ -65,7 +64,7 @@ export function OrderTrackClient({ orderId }: { orderId: string }) {
         <div className="paper-card p-6 text-center">
           <p className="font-[family-name:var(--font-special)] text-sm opacity-70">ORDER TOKEN</p>
           <p className="text-3xl font-bold mt-1">{data.order_number}</p>
-          <p className="mt-2 text-sm">{STEP_LABELS[data.order_status] ?? data.order_status}</p>
+          <p className="mt-2 text-sm">{activeLabel}</p>
         </div>
 
         {data.order_status === "PENDING_PAYMENT" && (
@@ -84,7 +83,10 @@ export function OrderTrackClient({ orderId }: { orderId: string }) {
           <ul className="space-y-2">
             {STEPS.map((step, idx) => {
               const done = currentIdx >= idx;
-              const active = data.order_status === step;
+              const active =
+                data.order_status === step ||
+                (step === "PAID" &&
+                  ["PAID", "IN_PREPARATION", "READY"].includes(data.order_status));
               return (
                 <li
                   key={step}

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { StaffGate } from "@/components/StaffGate";
 import { clearSession, getSession } from "@/lib/auth";
+import "./admin.css";
 
 const NAV = [
-  { href: "/admin", label: "Overview" },
+  { href: "/admin", label: "Dashboard" },
   { href: "/admin/inventory", label: "Inventory" },
   { href: "/admin/finance", label: "Finance" },
 ];
@@ -18,39 +19,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <StaffGate roles={["ADMIN"]}>
-      <div className="min-h-screen">
-        <header className="border-b border-white/10 px-4 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="admin-shell">
+        <header className="admin-header px-4 py-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="font-[family-name:var(--font-bebas)] text-3xl">ADMIN</h1>
-            <p className="text-sm text-white/60">{session?.name}</p>
+            <h1 className="text-lg font-semibold tracking-tight">404 Café · Admin</h1>
+            <p className="text-sm admin-muted">{session?.name}</p>
           </div>
-          <nav className="flex flex-wrap gap-2 text-sm">
+          <nav className="flex flex-wrap gap-1 items-center">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded ${
-                  pathname === item.href
-                    ? "bg-[var(--color-accent)] text-black font-medium"
-                    : "text-white/70 hover:text-white"
-                }`}
+                className={`admin-nav-link ${pathname === item.href ? "active" : ""}`}
               >
                 {item.label}
               </Link>
             ))}
+            <span className="mx-1 text-slate-300">|</span>
+            <Link href="/pos" className="admin-nav-link">
+              POS
+            </Link>
             <button
               type="button"
               onClick={() => {
                 clearSession();
                 router.push("/login");
               }}
-              className="px-3 py-1.5 text-white/70 hover:text-white"
+              className="admin-nav-link"
             >
               Logout
             </button>
           </nav>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
       </div>
     </StaffGate>
   );

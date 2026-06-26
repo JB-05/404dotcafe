@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -64,6 +64,8 @@ class MenuItem(Base):
     available: Mapped[bool] = mapped_column(Boolean, default=True)
     prep_time: Mapped[int] = mapped_column(Integer, default=10)
     customizations: Mapped[list | None] = mapped_column(JSONB, default=list)
+    unit_cost: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    target_margin_pct: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     category: Mapped["MenuCategory"] = relationship(back_populates="items")
@@ -86,3 +88,4 @@ from models.finance import (  # noqa: E402, F401
     FixedExpense,
     VariableExpense,
 )
+from models.cafe_session import CafeSession  # noqa: E402, F401

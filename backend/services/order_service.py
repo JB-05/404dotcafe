@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -9,6 +9,7 @@ from core.config import settings
 from core.events import order_events
 from models import MenuItem, Order, OrderItem, OrderStatus, PaymentStatus, User
 from schemas.order import CreateOrderRequest, OrderItemInput
+from services import cafe_service
 
 
 def _calc_tax(subtotal: int) -> tuple[int, int, int]:
@@ -55,6 +56,48 @@ async def _resolve_line(db: AsyncSession, cafe_id: int, line: OrderItemInput) ->
     return menu_item, unit_price
 
 
+def _recalculate_totals(order: Order) -> None:
+    subtotal = sum(item.subtotal for item in order.items)
+    cgst, sgst, total = _calc_tax(subtotal)
+    order.subtotal = subtotal
+    order.cgst = cgst
+    order.sgst = sgst
+    order.total = total
+
+
+async def _append_items(
+    db: AsyncSession, order: Order, lines: list[OrderItemInput], cafe_id: int
+) -> None:
+    for line in lines:
+        menu_item, unit_price = await _resolve_line(db, cafe_id, line)
+        db.add(
+            OrderItem(
+                order_id=order.id,
+                menu_item_id=menu_item.id,
+                external_id=menu_item.external_id,
+                name=menu_item.name,
+                quantity=line.quantity,
+                unit_price=unit_price,
+                subtotal=unit_price * line.quantity,
+                notes=line.notes,
+                customizations=line.customizations,
+                stock_deducted=False,
+            )
+        )
+    await db.flush()
+    await db.refresh(order, ["items"])
+    _recalculate_totals(order)
+
+
+async def _replace_items(
+    db: AsyncSession, order: Order, lines: list[OrderItemInput], cafe_id: int
+) -> None:
+    await db.execute(delete(OrderItem).where(OrderItem.order_id == order.id))
+    order.items.clear()
+    await db.flush()
+    await _append_items(db, order, lines, cafe_id)
+
+
 def _order_to_response(order: Order) -> dict:
     return {
         "id": order.id,
@@ -68,6 +111,9 @@ def _order_to_response(order: Order) -> dict:
         "cgst": order.cgst,
         "sgst": order.sgst,
         "total": order.total,
+        "amount_paid": order.amount_paid,
+        "balance_due": max(0, order.total - order.amount_paid),
+        "upi_txn_last5": order.upi_txn_last5,
         "payment_status": order.payment_status.value,
         "order_status": order.order_status.value,
         "version": order.version,
@@ -118,6 +164,7 @@ async def create_order(
             return existing
 
     cafe_id = settings.cafe_id
+    await cafe_service.require_accepting_orders(db, cafe_id)
     subtotal = 0
     resolved_lines: list[tuple[MenuItem, OrderItemInput, int]] = []
 
@@ -128,6 +175,15 @@ async def create_order(
 
     cgst, sgst, total = _calc_tax(subtotal)
     order_number = await _next_order_number(db, cafe_id)
+
+    from services import inventory_service
+
+    await inventory_service.assert_stock_for_menu_quantities(
+        db,
+        cafe_id,
+        [(menu_item.id, line.quantity) for menu_item, line, _ in resolved_lines],
+        item_label="order",
+    )
 
     order = Order(
         cafe_id=cafe_id,
@@ -170,11 +226,20 @@ async def create_order(
 
 
 async def list_pos_orders(db: AsyncSession, cafe_id: int) -> list[Order]:
-    terminal = (OrderStatus.COMPLETED, OrderStatus.CANCELLED)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     unpaid_first = case((Order.order_status == OrderStatus.PENDING_PAYMENT, 0), else_=1)
     result = await db.execute(
         select(Order)
-        .where(Order.cafe_id == cafe_id, Order.order_status.notin_(terminal))
+        .where(
+            Order.cafe_id == cafe_id,
+            or_(
+                Order.order_status.notin_((OrderStatus.COMPLETED, OrderStatus.CANCELLED)),
+                and_(
+                    Order.order_status == OrderStatus.COMPLETED,
+                    Order.created_at >= today_start,
+                ),
+            ),
+        )
         .options(selectinload(Order.items))
         .order_by(unpaid_first, Order.created_at.asc())
     )
@@ -191,7 +256,13 @@ async def _get_order_for_update(db: AsyncSession, order_id: int) -> Order | None
     return result.scalar_one_or_none()
 
 
-async def mark_order_paid(db: AsyncSession, order_id: int, staff: User, expected_version: int) -> Order:
+async def mark_order_paid(
+    db: AsyncSession,
+    order_id: int,
+    staff: User,
+    expected_version: int,
+    upi_txn_last5: str | None = None,
+) -> Order:
     order = await _get_order_for_update(db, order_id)
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
@@ -200,21 +271,38 @@ async def mark_order_paid(db: AsyncSession, order_id: int, staff: User, expected
             status_code=status.HTTP_409_CONFLICT,
             detail="Order was updated by another staff member. Refresh and try again.",
         )
-    if order.order_status != OrderStatus.PENDING_PAYMENT:
+
+    balance = max(0, order.total - order.amount_paid)
+
+    if order.order_status == OrderStatus.PENDING_PAYMENT:
+        if balance <= 0 and order.amount_paid > 0:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Nothing to pay")
+        order.order_status = OrderStatus.PAID
+        order.payment_status = PaymentStatus.PAID
+        order.paid_at = datetime.now(timezone.utc)
+        order.verified_by_user_id = staff.id
+        order.amount_paid = order.total
+        order.version += 1
+        from services import inventory_service
+
+        await inventory_service.deduct_for_order(db, order, staff.id)
+    elif order.order_status in (OrderStatus.PAID, OrderStatus.IN_PREPARATION, OrderStatus.READY):
+        if balance <= 0:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No additional payment due")
+        order.amount_paid = order.total
+        order.verified_by_user_id = staff.id
+        order.version += 1
+        from services import inventory_service
+
+        await inventory_service.deduct_for_order(db, order, staff.id)
+    else:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Cannot mark paid from status {order.order_status.value}",
         )
 
-    order.order_status = OrderStatus.PAID
-    order.payment_status = PaymentStatus.PAID
-    order.paid_at = datetime.now(timezone.utc)
-    order.verified_by_user_id = staff.id
-    order.version += 1
-
-    from services import inventory_service
-
-    await inventory_service.deduct_for_order(db, order, staff.id)
+    if upi_txn_last5:
+        order.upi_txn_last5 = upi_txn_last5
 
     await db.commit()
     await db.refresh(order, ["items"])
@@ -244,6 +332,123 @@ async def cancel_order(db: AsyncSession, order_id: int, staff: User, expected_ve
     await db.commit()
     await db.refresh(order, ["items"])
     await _emit("ORDER_CANCELLED", order)
+    return order
+
+
+async def update_pending_order(
+    db: AsyncSession,
+    order_id: int,
+    customer_name: str,
+    customer_phone: str | None,
+    table_number: str | None,
+    notes: str | None,
+    items: list[OrderItemInput],
+    expected_version: int,
+) -> Order:
+    order = await _get_order_for_update(db, order_id)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.version != expected_version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Order was updated by another staff member. Refresh and try again.",
+        )
+    if order.order_status != OrderStatus.PENDING_PAYMENT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only unpaid orders can be fully edited",
+        )
+
+    order.customer_name = customer_name.strip()
+    order.customer_phone = customer_phone
+    order.table_number = table_number
+    order.notes = notes
+    order.version += 1
+
+    from services import inventory_service
+
+    menu_quantities: list[tuple[int, int]] = []
+    for line in items:
+        menu_item, _ = await _resolve_line(db, settings.cafe_id, line)
+        menu_quantities.append((menu_item.id, line.quantity))
+    await inventory_service.assert_stock_for_menu_quantities(
+        db, settings.cafe_id, menu_quantities, item_label="order update"
+    )
+
+    await _replace_items(db, order, items, settings.cafe_id)
+
+    await db.commit()
+    await db.refresh(order, ["items"])
+    await _emit("ORDER_UPDATED", order)
+    return order
+
+
+async def add_items_to_order(
+    db: AsyncSession,
+    order_id: int,
+    items: list[OrderItemInput],
+    expected_version: int,
+    staff: User | None = None,
+) -> Order:
+    order = await _get_order_for_update(db, order_id)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.version != expected_version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Order was updated by another staff member. Refresh and try again.",
+        )
+    if order.order_status not in (OrderStatus.PAID, OrderStatus.IN_PREPARATION, OrderStatus.READY):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Items can only be added to paid in-progress orders",
+        )
+
+    from services import inventory_service
+
+    menu_quantities: list[tuple[int, int]] = []
+    for line in items:
+        menu_item, _ = await _resolve_line(db, settings.cafe_id, line)
+        menu_quantities.append((menu_item.id, line.quantity))
+    await inventory_service.assert_stock_for_menu_quantities(
+        db, settings.cafe_id, menu_quantities, item_label="added items"
+    )
+
+    order.version += 1
+    await _append_items(db, order, items, settings.cafe_id)
+    await inventory_service.deduct_for_order(db, order, staff.id if staff else None)
+
+    await db.commit()
+    await db.refresh(order, ["items"])
+    await _emit("ORDER_UPDATED", order)
+    return order
+
+
+async def complete_order(db: AsyncSession, order_id: int, expected_version: int) -> Order:
+    order = await _get_order_for_update(db, order_id)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.version != expected_version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Order was updated by another staff member. Refresh and try again.",
+        )
+    if order.order_status not in (OrderStatus.PAID, OrderStatus.IN_PREPARATION, OrderStatus.READY):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot complete from status {order.order_status.value}",
+        )
+    if max(0, order.total - order.amount_paid) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Collect outstanding payment before completing the order",
+        )
+
+    order.order_status = OrderStatus.COMPLETED
+    order.version += 1
+    await db.commit()
+    await db.refresh(order, ["items"])
+    await _emit("ORDER_COMPLETED", order)
     return order
 
 

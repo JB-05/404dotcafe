@@ -22,6 +22,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
     throw new Error(typeof message === "string" ? message : JSON.stringify(message));
   }
+  if (res.status === 204) {
+    return undefined as T;
+  }
   return res.json() as Promise<T>;
 }
 
@@ -94,6 +97,9 @@ export type OrderResponse = {
   items: OrderItemResponse[];
   created_at: string;
   version?: number;
+  amount_paid?: number;
+  balance_due?: number;
+  upi_txn_last5?: string | null;
 };
 
 export function fetchMenu() {
@@ -130,10 +136,13 @@ export function fetchPosOrders() {
   return apiFetch<OrderResponse[]>("/api/v1/pos/orders");
 }
 
-export function markOrderPaid(orderId: number, version: number) {
+export function markOrderPaid(orderId: number, version: number, upiTxnLast5?: string) {
   return apiFetch<OrderResponse>(`/api/v1/pos/orders/${orderId}/payment`, {
     method: "PATCH",
-    body: JSON.stringify({ version }),
+    body: JSON.stringify({
+      version,
+      ...(upiTxnLast5 ? { upi_txn_last5: upiTxnLast5 } : {}),
+    }),
   });
 }
 
@@ -141,6 +150,41 @@ export function cancelPosOrder(orderId: number, version: number) {
   return apiFetch<OrderResponse>(`/api/v1/pos/orders/${orderId}/cancel`, {
     method: "PATCH",
     body: JSON.stringify({ version }),
+  });
+}
+
+export function completePosOrder(orderId: number, version: number) {
+  return apiFetch<OrderResponse>(`/api/v1/pos/orders/${orderId}/complete`, {
+    method: "PATCH",
+    body: JSON.stringify({ version }),
+  });
+}
+
+export function createPosOrder(payload: CreateOrderPayload) {
+  return apiFetch<OrderResponse>("/api/v1/pos/orders", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePosOrder(
+  orderId: number,
+  payload: CreateOrderPayload & { version: number }
+) {
+  return apiFetch<OrderResponse>(`/api/v1/pos/orders/${orderId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function addPosOrderItems(
+  orderId: number,
+  version: number,
+  items: OrderItemPayload[]
+) {
+  return apiFetch<OrderResponse>(`/api/v1/pos/orders/${orderId}/items`, {
+    method: "POST",
+    body: JSON.stringify({ version, items }),
   });
 }
 
@@ -181,6 +225,17 @@ export type MenuRecipe = {
   lines: RecipeLine[];
 };
 
+export type MenuCatalogItem = {
+  id: number;
+  external_id: string;
+  name: string;
+  category_name: string;
+  category_slug: string;
+  price: number;
+  customizations: { name: string; price: number }[];
+  lines: RecipeLine[];
+};
+
 export type FinanceSummary = {
   date: string;
   revenue: number;
@@ -197,6 +252,40 @@ export type FinanceSummary = {
   break_even_sales: number | null;
   low_stock_count: number;
   hourly_sales: { hour: number; revenue: number; order_count: number }[];
+  fixed_breakdown?: ExpenseLine[];
+  variable_breakdown?: ExpenseLine[];
+  item_sales?: ItemSalesProfit[];
+};
+
+export type ItemSalesProfit = {
+  menu_item_id: number;
+  name: string;
+  quantity_sold: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin_pct: number;
+  unit_cost: number;
+};
+
+export type MenuItemEconomics = {
+  id: number;
+  name: string;
+  external_id: string;
+  price: number;
+  unit_cost: number;
+  profit_per_unit: number;
+  margin_pct: number;
+  target_margin_pct: number;
+  category_name?: string | null;
+};
+
+export type ExpenseLine = {
+  name?: string | null;
+  category?: string | null;
+  amount: number;
+  daily_amount?: number | null;
+  billing_cycle?: string | null;
 };
 
 export type FixedExpense = {
@@ -221,8 +310,108 @@ export type AdminOverview = {
   alerts: StockAlert[];
 };
 
-export function fetchAdminOverview() {
-  return apiFetch<AdminOverview>("/api/v1/finance/overview");
+export type DailyTrendPoint = {
+  date: string;
+  revenue: number;
+  order_count: number;
+  completed_orders: number;
+  average_order_value: number;
+  cogs: number;
+  fixed_expenses: number;
+  variable_expenses: number;
+  gross_profit: number;
+  net_profit: number;
+  profit_margin_pct: number;
+  fixed_breakdown?: ExpenseLine[];
+  variable_breakdown?: ExpenseLine[];
+};
+
+export type DailyTrend = {
+  days: number;
+  points: DailyTrendPoint[];
+};
+
+export type MonthlySummary = {
+  year: number;
+  month: number;
+  label: string;
+  days_in_month: number;
+  revenue: number;
+  completed_orders: number;
+  average_order_value: number;
+  cogs: number;
+  fixed_expenses: number;
+  variable_expenses: number;
+  gross_profit: number;
+  net_profit: number;
+  profit_margin_pct: number;
+  fixed_breakdown?: ExpenseLine[];
+  variable_breakdown?: ExpenseLine[];
+};
+
+export type MonthlyTrend = {
+  months: number;
+  points: MonthlySummary[];
+};
+
+export type YearlySummary = {
+  year: number;
+  label: string;
+  revenue: number;
+  completed_orders: number;
+  average_order_value: number;
+  cogs: number;
+  fixed_expenses: number;
+  variable_expenses: number;
+  gross_profit: number;
+  net_profit: number;
+  profit_margin_pct: number;
+  fixed_breakdown?: ExpenseLine[];
+  variable_breakdown?: ExpenseLine[];
+};
+
+export type YearlyTrend = {
+  years: number;
+  points: YearlySummary[];
+};
+
+export type ExpenseTimeline = {
+  period: string;
+  year?: number;
+  month?: number;
+  points: DailyTrendPoint[] | MonthlySummary[] | YearlySummary[];
+};
+
+export type CafeStatus = {
+  is_open: boolean;
+  session_id?: number | null;
+  opened_at?: string | null;
+  opened_by_user_id?: number | null;
+  current_session_seconds: number;
+};
+
+export type CafeOperatingStats = {
+  total_sessions: number;
+  days_active: number;
+  total_open_seconds: number;
+  total_open_hours: number;
+  is_open: boolean;
+  current_session_seconds: number;
+};
+
+export type CafeSession = {
+  id: number;
+  opened_at: string;
+  closed_at: string | null;
+  opened_by_user_id: number;
+  closed_by_user_id: number | null;
+  duration_seconds: number;
+  is_active: boolean;
+};
+
+export function fetchAdminOverview(date?: string) {
+  const q = date ? `?date=${date}` : "";
+  return apiFetch<AdminOverview>(`/api/v1/finance/overview${q}`);
 }
 
 export function fetchFinanceSummary(date?: string) {
@@ -236,6 +425,65 @@ export function computeFinanceSnapshot(date?: string) {
     `/api/v1/finance/snapshot${q}`,
     { method: "POST" }
   );
+}
+
+export function fetchDailyTrend(days = 30) {
+  return apiFetch<DailyTrend>(`/api/v1/finance/daily-trend?days=${days}`);
+}
+
+export function fetchMonthlySummary(year: number, month: number) {
+  return apiFetch<MonthlySummary>(`/api/v1/finance/monthly?year=${year}&month=${month}`);
+}
+
+export function fetchMonthlyTrend(months = 12) {
+  return apiFetch<MonthlyTrend>(`/api/v1/finance/monthly-trend?months=${months}`);
+}
+
+export function fetchYearlySummary(year: number) {
+  return apiFetch<YearlySummary>(`/api/v1/finance/yearly?year=${year}`);
+}
+
+export function fetchYearlyTrend(years = 5) {
+  return apiFetch<YearlyTrend>(`/api/v1/finance/yearly-trend?years=${years}`);
+}
+
+export function fetchExpenseTimeline(period: "daily" | "monthly" | "yearly", year: number, month?: number) {
+  const monthQ = month ? `&month=${month}` : "";
+  return apiFetch<ExpenseTimeline>(`/api/v1/finance/expense-timeline?period=${period}&year=${year}${monthQ}`);
+}
+
+export function fetchCafeStatus() {
+  return apiFetch<CafeStatus>("/api/v1/cafe/status");
+}
+
+export function openCafe() {
+  return apiFetch<CafeStatus>("/api/v1/cafe/open", { method: "POST" });
+}
+
+export function closeCafe() {
+  return apiFetch<CafeStatus>("/api/v1/cafe/close", { method: "POST" });
+}
+
+export function fetchCafeStats() {
+  return apiFetch<CafeOperatingStats>("/api/v1/cafe/stats");
+}
+
+export function fetchCafeSessions(limit = 30) {
+  return apiFetch<CafeSession[]>(`/api/v1/cafe/sessions?limit=${limit}`);
+}
+
+export function fetchMenuItemEconomics() {
+  return apiFetch<MenuItemEconomics[]>("/api/v1/finance/menu-items");
+}
+
+export function updateMenuItemEconomics(
+  menuItemId: number,
+  payload: { unit_cost?: number; target_margin_pct?: number }
+) {
+  return apiFetch<MenuItemEconomics>(`/api/v1/finance/menu-items/${menuItemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function fetchInventoryItems() {
@@ -281,6 +529,24 @@ export function fetchMenuItemsForRecipes() {
   );
 }
 
+export function fetchMenuCatalog() {
+  return apiFetch<MenuCatalogItem[]>("/api/v1/inventory/menu-catalog");
+}
+
+export function saveMenuCatalogItem(
+  menuItemId: number,
+  payload: {
+    price?: number;
+    customizations?: { name: string; price: number }[];
+    lines?: { inventory_item_id: number; quantity_required: number }[];
+  }
+) {
+  return apiFetch<MenuCatalogItem>(`/api/v1/inventory/menu-catalog/${menuItemId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateRecipe(menuItemId: number, lines: { inventory_item_id: number; quantity_required: number }[]) {
   return apiFetch<MenuRecipe>(`/api/v1/inventory/recipes/${menuItemId}`, {
     method: "PUT",
@@ -300,6 +566,26 @@ export function createFixedExpense(payload: {
   return apiFetch<FixedExpense>("/api/v1/finance/fixed", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateFixedExpense(
+  id: number,
+  payload: {
+    name?: string;
+    amount?: number;
+    billing_cycle?: string;
+  }
+) {
+  return apiFetch<FixedExpense>(`/api/v1/finance/fixed/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteFixedExpense(id: number) {
+  return apiFetch<void>(`/api/v1/finance/fixed/${id}`, {
+    method: "DELETE",
   });
 }
 

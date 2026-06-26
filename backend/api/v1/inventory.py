@@ -9,6 +9,8 @@ from core.database import get_db
 from core.deps import require_roles
 from models import MenuItem, User, UserRole
 from schemas.inventory import (
+    AdminMenuCatalogItem,
+    AdminMenuItemSaveRequest,
     InventoryItemCreate,
     InventoryItemResponse,
     InventoryItemUpdate,
@@ -90,6 +92,28 @@ async def get_menu_items_for_recipes(db: Annotated[AsyncSession, Depends(get_db)
         {"id": row.id, "name": row.name, "external_id": row.external_id}
         for row in result.all()
     ]
+
+
+@router.get("/menu-catalog", response_model=list[AdminMenuCatalogItem])
+async def get_menu_catalog(db: Annotated[AsyncSession, Depends(get_db)], _: AdminUser):
+    return await inventory_service.list_menu_catalog(db, settings.cafe_id)
+
+
+@router.put("/menu-catalog/{menu_item_id}", response_model=AdminMenuCatalogItem)
+async def save_menu_catalog_item(
+    menu_item_id: int,
+    body: AdminMenuItemSaveRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: AdminUser,
+):
+    return await inventory_service.save_menu_item_catalog(
+        db,
+        settings.cafe_id,
+        menu_item_id,
+        price=body.price,
+        customizations=body.customizations,
+        lines=body.lines,
+    )
 
 
 @router.put("/recipes/{menu_item_id}", response_model=MenuRecipeResponse)

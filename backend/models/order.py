@@ -38,6 +38,8 @@ class Order(Base):
     cgst: Mapped[int] = mapped_column(Integer, nullable=False)
     sgst: Mapped[int] = mapped_column(Integer, nullable=False)
     total: Mapped[int] = mapped_column(Integer, nullable=False)
+    amount_paid: Mapped[int] = mapped_column(Integer, default=0)
+    upi_txn_last5: Mapped[str | None] = mapped_column(String(5))
     payment_status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.PENDING
     )
@@ -68,5 +70,6 @@ class OrderItem(Base):
     subtotal: Mapped[int] = mapped_column(Integer, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
     customizations: Mapped[list | None] = mapped_column(JSONB, default=list)
+    stock_deducted: Mapped[bool] = mapped_column(default=False)
 
     order: Mapped["Order"] = relationship(back_populates="items")

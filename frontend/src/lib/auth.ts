@@ -30,7 +30,6 @@ export function authHeaders(): Record<string, string> {
 }
 
 export function roleHome(role: string) {
-  if (role === "KITCHEN") return "/kitchen";
   if (role === "ADMIN") return "/admin";
   return "/pos";
 }

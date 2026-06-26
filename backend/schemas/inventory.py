@@ -61,6 +61,33 @@ class MenuRecipeResponse(BaseModel):
     lines: list[RecipeLineResponse]
 
 
+class CustomizationInput(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    price: int = Field(ge=0)
+
+
+class AdminMenuCatalogItem(BaseModel):
+    id: int
+    external_id: str
+    name: str
+    category_name: str
+    category_slug: str
+    price: int
+    customizations: list[CustomizationInput]
+    lines: list[RecipeLineResponse]
+
+
+class AdminMenuItemUpdate(BaseModel):
+    price: int | None = Field(default=None, ge=0)
+    customizations: list[CustomizationInput] | None = None
+
+
+class AdminMenuItemSaveRequest(BaseModel):
+    price: int | None = Field(default=None, ge=0)
+    customizations: list[CustomizationInput] | None = None
+    lines: list[RecipeLineInput] = Field(default_factory=list)
+
+
 class StockAlertResponse(BaseModel):
     id: int
     name: str

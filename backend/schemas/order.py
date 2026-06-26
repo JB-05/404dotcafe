@@ -41,6 +41,9 @@ class OrderResponse(BaseModel):
     cgst: int
     sgst: int
     total: int
+    amount_paid: int = 0
+    balance_due: int = 0
+    upi_txn_last5: str | None = None
     payment_status: str
     order_status: str
     version: int = 1

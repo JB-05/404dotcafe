@@ -1,15 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   adjustInventory,
   createInventoryItem,
   fetchInventoryItems,
-  fetchMenuItemsForRecipes,
-  fetchRecipes,
-  updateRecipe,
+  fetchMenuCatalog,
+  saveMenuCatalogItem,
   type InventoryItem,
+  type MenuCatalogItem,
 } from "@/lib/api";
 
 const UNITS = ["pcs", "g", "kg", "ml", "l"];
@@ -20,6 +20,203 @@ function alertClass(level: string) {
   if (level === "CRITICAL") return "text-amber-700";
   if (level === "LOW") return "text-amber-600";
   return "text-green-700";
+}
+
+type RecipeLineEdit = { inventory_item_id: number; quantity_required: string };
+type CustomizationEdit = { name: string; price: string };
+
+function emptyRecipeLine(): RecipeLineEdit {
+  return { inventory_item_id: 0, quantity_required: "" };
+}
+
+function MenuItemEditor({
+  item,
+  ingredients,
+  onSaved,
+}: {
+  item: MenuCatalogItem;
+  ingredients: InventoryItem[];
+  onSaved: () => void;
+}) {
+  const [price, setPrice] = useState(String(item.price));
+  const [customizations, setCustomizations] = useState<CustomizationEdit[]>(
+    item.customizations.map((c) => ({ name: c.name, price: String(c.price) }))
+  );
+  const [lines, setLines] = useState<RecipeLineEdit[]>(
+    item.lines.length > 0
+      ? item.lines.map((l) => ({
+          inventory_item_id: l.inventory_item_id,
+          quantity_required: String(l.quantity_required),
+        }))
+      : [emptyRecipeLine()]
+  );
+
+  const save = useMutation({
+    mutationFn: () => {
+      const priceNum = parseInt(price, 10);
+      if (Number.isNaN(priceNum) || priceNum < 0) {
+        throw new Error("Enter a valid price");
+      }
+      return saveMenuCatalogItem(item.id, {
+        price: priceNum,
+        customizations: customizations
+          .filter((c) => c.name.trim())
+          .map((c) => ({
+            name: c.name.trim(),
+            price: parseInt(c.price, 10) || 0,
+          })),
+        lines: lines
+          .filter((l) => l.inventory_item_id && l.quantity_required)
+          .map((l) => ({
+            inventory_item_id: l.inventory_item_id,
+            quantity_required: parseFloat(l.quantity_required),
+          })),
+      });
+    },
+    onSuccess: () => onSaved(),
+  });
+
+  const isAddon = item.category_slug === "addons";
+
+  return (
+    <div className="admin-card space-y-5">
+      <div>
+        <p className="font-semibold">{item.name}</p>
+        <p className="text-xs admin-muted">
+          {item.category_name} · {item.external_id}
+        </p>
+      </div>
+
+      <div>
+        <label className="admin-card-title block mb-1">Base price (₹)</label>
+        <input
+          type="number"
+          min={0}
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="admin-input w-full max-w-[160px]"
+        />
+      </div>
+
+      {!isAddon && (
+        <div>
+          <p className="admin-card-title mb-2">Add-on options (extra price)</p>
+          <p className="text-xs admin-muted mb-2">
+            Optional extras customers pick on this item (e.g. extra cheese, double patty).
+          </p>
+          <div className="space-y-2">
+            {customizations.map((c, idx) => (
+              <div key={idx} className="flex gap-2">
+                <input
+                  placeholder="Add-on name"
+                  value={c.name}
+                  onChange={(e) => {
+                    const next = [...customizations];
+                    next[idx] = { ...next[idx], name: e.target.value };
+                    setCustomizations(next);
+                  }}
+                  className="flex-1 admin-input py-1.5"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="₹"
+                  value={c.price}
+                  onChange={(e) => {
+                    const next = [...customizations];
+                    next[idx] = { ...next[idx], price: e.target.value };
+                    setCustomizations(next);
+                  }}
+                  className="w-24 admin-input py-1.5"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCustomizations(customizations.filter((_, i) => i !== idx))}
+                  className="admin-btn text-xs text-red-600 border-red-200"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCustomizations([...customizations, { name: "", price: "0" }])}
+              className="text-sm text-blue-600"
+            >
+              + Add option
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="admin-card-title mb-2">Inventory recipe (per serving)</p>
+        <p className="text-xs admin-muted mb-2">
+          Ingredients deducted from stock when this item is sold. Set quantity per 1 unit ordered.
+        </p>
+        <div className="space-y-2">
+          {lines.map((line, idx) => (
+            <div key={idx} className="flex gap-2">
+              <select
+                value={line.inventory_item_id || ""}
+                onChange={(e) => {
+                  const next = [...lines];
+                  next[idx] = { ...next[idx], inventory_item_id: parseInt(e.target.value, 10) };
+                  setLines(next);
+                }}
+                className="flex-1 admin-input py-1.5"
+              >
+                <option value="">Ingredient</option>
+                {ingredients.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} ({i.unit})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                step="any"
+                min={0}
+                placeholder="Qty"
+                value={line.quantity_required}
+                onChange={(e) => {
+                  const next = [...lines];
+                  next[idx] = { ...next[idx], quantity_required: e.target.value };
+                  setLines(next);
+                }}
+                className="w-24 admin-input py-1.5"
+              />
+              <button
+                type="button"
+                onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+                className="admin-btn text-xs"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setLines([...lines, emptyRecipeLine()])}
+            className="text-sm text-blue-600"
+          >
+            + Add ingredient
+          </button>
+        </div>
+      </div>
+
+      {save.isError && <p className="text-sm text-red-600">{save.error.message}</p>}
+
+      <button
+        type="button"
+        disabled={save.isPending}
+        onClick={() => save.mutate()}
+        className="w-full admin-btn admin-btn-primary disabled:opacity-50"
+      >
+        {save.isPending ? "Saving…" : "Save changes"}
+      </button>
+    </div>
+  );
 }
 
 export default function AdminInventoryPage() {
@@ -35,23 +232,34 @@ export default function AdminInventoryPage() {
   const [adjustId, setAdjustId] = useState<number | null>(null);
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("RESTOCK");
-  const [recipeMenuId, setRecipeMenuId] = useState<number | "">("");
-  const [recipeLines, setRecipeLines] = useState<{ inventory_item_id: number; quantity_required: string }[]>([]);
+  const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory-items"],
     queryFn: fetchInventoryItems,
   });
 
-  const { data: recipes = [] } = useQuery({
-    queryKey: ["inventory-recipes"],
-    queryFn: fetchRecipes,
+  const { data: catalog = [] } = useQuery({
+    queryKey: ["menu-catalog"],
+    queryFn: fetchMenuCatalog,
   });
 
-  const { data: menuItems = [] } = useQuery({
-    queryKey: ["inventory-menu-items"],
-    queryFn: fetchMenuItemsForRecipes,
-  });
+  const groupedCatalog = useMemo(() => {
+    const groups = new Map<string, MenuCatalogItem[]>();
+    for (const entry of catalog) {
+      const list = groups.get(entry.category_name) ?? [];
+      list.push(entry);
+      groups.set(entry.category_name, list);
+    }
+    return [...groups.entries()];
+  }, [catalog]);
+
+  const selectedItem = catalog.find((c) => c.id === selectedMenuId) ?? null;
+
+  const invalidateMenu = () => {
+    queryClient.invalidateQueries({ queryKey: ["menu-catalog"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-recipes"] });
+  };
 
   const createItem = useMutation({
     mutationFn: () => createInventoryItem(newItem),
@@ -76,31 +284,6 @@ export default function AdminInventoryPage() {
     },
   });
 
-  const saveRecipe = useMutation({
-    mutationFn: () =>
-      updateRecipe(
-        Number(recipeMenuId),
-        recipeLines
-          .filter((l) => l.inventory_item_id && l.quantity_required)
-          .map((l) => ({
-            inventory_item_id: l.inventory_item_id,
-            quantity_required: parseFloat(l.quantity_required),
-          }))
-      ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory-recipes"] }),
-  });
-
-  const loadRecipe = (menuItemId: number) => {
-    setRecipeMenuId(menuItemId);
-    const existing = recipes.find((r) => r.menu_item_id === menuItemId);
-    setRecipeLines(
-      existing?.lines.map((l) => ({
-        inventory_item_id: l.inventory_item_id,
-        quantity_required: String(l.quantity_required),
-      })) ?? [{ inventory_item_id: 0, quantity_required: "" }]
-    );
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
@@ -109,11 +292,9 @@ export default function AdminInventoryPage() {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded text-sm capitalize ${
-              tab === t ? "bg-[var(--color-accent)] text-black font-medium" : "bg-white/10"
-            }`}
+            className={`admin-tab capitalize ${tab === t ? "active" : ""}`}
           >
-            {t}
+            {t === "recipes" ? "Menu & recipes" : t}
           </button>
         ))}
       </div>
@@ -121,7 +302,7 @@ export default function AdminInventoryPage() {
       {tab === "ingredients" && (
         <>
           <form
-            className="paper-card p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            className="admin-card grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
             onSubmit={(e) => {
               e.preventDefault();
               createItem.mutate();
@@ -133,12 +314,12 @@ export default function AdminInventoryPage() {
               placeholder="Name"
               value={newItem.name}
               onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-              className="rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+              className="admin-input"
             />
             <select
               value={newItem.unit}
               onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-              className="rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+              className="admin-input"
             >
               {UNITS.map((u) => (
                 <option key={u} value={u}>
@@ -153,7 +334,7 @@ export default function AdminInventoryPage() {
               placeholder="Stock"
               value={newItem.current_stock || ""}
               onChange={(e) => setNewItem({ ...newItem, current_stock: parseFloat(e.target.value) || 0 })}
-              className="rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+              className="admin-input"
             />
             <input
               type="number"
@@ -162,7 +343,7 @@ export default function AdminInventoryPage() {
               placeholder="Threshold"
               value={newItem.threshold || ""}
               onChange={(e) => setNewItem({ ...newItem, threshold: parseFloat(e.target.value) || 0 })}
-              className="rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+              className="admin-input"
             />
             <input
               type="number"
@@ -170,21 +351,21 @@ export default function AdminInventoryPage() {
               placeholder="Cost/unit (paise)"
               value={newItem.cost_per_unit || ""}
               onChange={(e) => setNewItem({ ...newItem, cost_per_unit: parseInt(e.target.value, 10) || 0 })}
-              className="rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+              className="admin-input"
             />
             <button
               type="submit"
               disabled={createItem.isPending}
-              className="rounded bg-[var(--color-ink)] text-white py-2 text-sm disabled:opacity-50"
+              className="admin-btn admin-btn-primary disabled:opacity-50"
             >
               Add
             </button>
           </form>
 
-          {isLoading && <p className="text-white/70">Loading…</p>}
+          {isLoading && <p className="admin-muted">Loading…</p>}
           <div className="space-y-2">
             {items.map((item: InventoryItem) => (
-              <div key={item.id} className="paper-card p-4 flex flex-wrap justify-between gap-3 items-center">
+              <div key={item.id} className="admin-card flex flex-wrap justify-between gap-3 items-center">
                 <div>
                   <p className="font-medium">{item.name}</p>
                   <p className="text-sm opacity-70">
@@ -199,7 +380,7 @@ export default function AdminInventoryPage() {
                   <button
                     type="button"
                     onClick={() => setAdjustId(item.id)}
-                    className="text-sm rounded border border-black/20 px-3 py-1"
+                    className="admin-btn text-sm"
                   >
                     Adjust
                   </button>
@@ -211,7 +392,7 @@ export default function AdminInventoryPage() {
           {adjustId != null && (
             <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
               <form
-                className="paper-card p-5 w-full max-w-sm space-y-3"
+                className="admin-card w-full max-w-sm space-y-3"
                 onSubmit={(e) => {
                   e.preventDefault();
                   adjust.mutate();
@@ -225,12 +406,12 @@ export default function AdminInventoryPage() {
                   placeholder="+10 or -2"
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(e.target.value)}
-                  className="w-full rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+                  className="w-full admin-input"
                 />
                 <select
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
-                  className="w-full rounded border border-black/20 bg-white/50 px-3 py-2 text-sm text-[var(--color-ink)]"
+                  className="w-full admin-input"
                 >
                   {REASONS.map((r) => (
                     <option key={r} value={r}>
@@ -240,13 +421,13 @@ export default function AdminInventoryPage() {
                 </select>
                 {adjust.error && <p className="text-sm text-red-700">{adjust.error.message}</p>}
                 <div className="flex gap-2">
-                  <button type="submit" className="flex-1 rounded bg-green-700 text-white py-2 text-sm">
+                  <button type="submit" className="flex-1 admin-btn admin-btn-primary py-2">
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setAdjustId(null)}
-                    className="px-4 rounded border border-black/20 text-sm"
+                    className="admin-btn px-4"
                   >
                     Cancel
                   </button>
@@ -259,79 +440,56 @@ export default function AdminInventoryPage() {
 
       {tab === "recipes" && (
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">Menu items</p>
-            {menuItems.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => loadRecipe(m.id)}
-                className={`w-full text-left paper-card p-3 text-sm ${
-                  recipeMenuId === m.id ? "ring-2 ring-[var(--color-accent)]" : ""
-                }`}
-              >
-                {m.name}
-              </button>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <p className="text-sm font-semibold">All menu items</p>
+            <p className="text-xs admin-muted">
+              Edit price, add-on options, and inventory quantities for every item including standalone add-ons.
+            </p>
+            {groupedCatalog.map(([category, entries]) => (
+              <div key={category}>
+                <p className="text-xs font-medium admin-muted uppercase tracking-wide mb-2">{category}</p>
+                <div className="space-y-1.5">
+                  {entries.map((m) => {
+                    const hasRecipe = m.lines.length > 0;
+                    const hasAddons = m.customizations.length > 0;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMenuId(m.id)}
+                        className={`w-full text-left admin-card text-sm ${
+                          selectedMenuId === m.id ? "ring-2 ring-slate-400" : ""
+                        }`}
+                      >
+                        <div className="flex justify-between gap-2 items-start">
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-xs admin-muted shrink-0">₹{m.price}</span>
+                        </div>
+                        <p className="text-xs admin-muted mt-0.5">
+                          {hasRecipe ? `${m.lines.length} ingredient${m.lines.length === 1 ? "" : "s"}` : "No recipe"}
+                          {hasAddons ? ` · ${m.customizations.length} add-on${m.customizations.length === 1 ? "" : "s"}` : ""}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
+            {catalog.length === 0 && <p className="text-sm admin-muted">No menu items found.</p>}
           </div>
 
-          <div className="paper-card p-4 space-y-3">
-            <p className="font-semibold text-sm">Recipe lines</p>
-            {recipeMenuId === "" ? (
-              <p className="text-sm opacity-60">Select a menu item</p>
+          <div>
+            {selectedItem ? (
+              <MenuItemEditor
+                key={selectedItem.id}
+                item={selectedItem}
+                ingredients={items}
+                onSaved={invalidateMenu}
+              />
             ) : (
-              <>
-                {recipeLines.map((line, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <select
-                      value={line.inventory_item_id || ""}
-                      onChange={(e) => {
-                        const next = [...recipeLines];
-                        next[idx] = { ...next[idx], inventory_item_id: parseInt(e.target.value, 10) };
-                        setRecipeLines(next);
-                      }}
-                      className="flex-1 rounded border border-black/20 bg-white/50 px-2 py-1.5 text-sm text-[var(--color-ink)]"
-                    >
-                      <option value="">Ingredient</option>
-                      {items.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.name} ({i.unit})
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      step="any"
-                      min={0}
-                      placeholder="Qty"
-                      value={line.quantity_required}
-                      onChange={(e) => {
-                        const next = [...recipeLines];
-                        next[idx] = { ...next[idx], quantity_required: e.target.value };
-                        setRecipeLines(next);
-                      }}
-                      className="w-24 rounded border border-black/20 bg-white/50 px-2 py-1.5 text-sm text-[var(--color-ink)]"
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setRecipeLines([...recipeLines, { inventory_item_id: 0, quantity_required: "" }])
-                  }
-                  className="text-sm text-[var(--color-accent)]"
-                >
-                  + Add line
-                </button>
-                <button
-                  type="button"
-                  disabled={saveRecipe.isPending}
-                  onClick={() => saveRecipe.mutate()}
-                  className="w-full rounded bg-[var(--color-ink)] text-white py-2 text-sm disabled:opacity-50"
-                >
-                  Save recipe
-                </button>
-              </>
+              <div className="admin-card">
+                <p className="text-sm admin-muted">Select a menu item to edit price, add-ons, and recipe.</p>
+              </div>
             )}
           </div>
         </div>

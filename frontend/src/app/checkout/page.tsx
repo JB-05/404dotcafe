@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createOrder } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { createOrder, fetchCafeStatus } from "@/lib/api";
 import { useCart } from "@/stores/cart";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { data: cafeStatus } = useQuery({
+    queryKey: ["cafe-status"],
+    queryFn: fetchCafeStatus,
+    refetchInterval: 30000,
+  });
+  const cafeClosed = cafeStatus && !cafeStatus.is_open;
   const items = useCart((s) => s.items);
   const clear = useCart((s) => s.clear);
   const updateQty = useCart((s) => s.updateQty);
@@ -27,7 +34,7 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || items.length === 0) return;
+    if (!name.trim() || items.length === 0 || cafeClosed) return;
 
     setSubmitting(true);
     setError("");
@@ -64,6 +71,13 @@ export default function CheckoutPage() {
         ← Back to menu
       </Link>
       <h1 className="mt-4 font-[family-name:var(--font-bebas)] text-4xl">CHECKOUT</h1>
+
+      {cafeClosed && (
+        <div className="mt-4 paper-card p-4 border border-amber-600/50">
+          <p className="font-semibold text-sm">Cafe is closed</p>
+          <p className="text-sm opacity-80 mt-1">We are not accepting orders right now. Please check back later.</p>
+        </div>
+      )}
 
       <div className="paper-card mt-6 p-5 space-y-3">
         {items.length === 0 ? (
@@ -182,7 +196,7 @@ export default function CheckoutPage() {
 
         <button
           type="submit"
-          disabled={submitting || items.length === 0 || !name.trim()}
+          disabled={submitting || items.length === 0 || !name.trim() || cafeClosed}
           className="w-full rounded bg-[var(--color-accent)] text-white py-3 font-medium disabled:opacity-50"
         >
           {submitting ? "Placing order…" : "Place order"}

@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 
-from api.v1 import auth, finance, inventory, kitchen, menu, orders, pos
+from api.v1 import auth, cafe, finance, inventory, kitchen, menu, orders, pos
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
+api_router.include_router(cafe.router)
 api_router.include_router(menu.router)
 api_router.include_router(orders.router)
 api_router.include_router(pos.router)

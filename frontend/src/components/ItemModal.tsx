@@ -96,7 +96,7 @@ export function ItemModal({ item, onClose }: Props) {
             onClick={handleAdd}
             className="flex-1 rounded bg-[var(--color-ink)] text-white py-2 text-sm font-medium"
           >
-            Add to order
+            Add to cart
           </button>
         </div>
       </div>
