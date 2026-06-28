@@ -1,7 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, case, delete, func, or_, select
+from sqlalchemy import and_, case, delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,6 +11,8 @@ from core.events import order_events
 from models import MenuItem, Order, OrderItem, OrderStatus, PaymentStatus, User
 from schemas.order import CreateOrderRequest, OrderItemInput
 from services import cafe_service
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def _calc_tax(subtotal: int) -> tuple[int, int, int]:
@@ -26,9 +29,25 @@ def _customization_price(menu_item: MenuItem, selected: list[str]) -> int:
 
 
 async def _next_order_number(db: AsyncSession, cafe_id: int) -> str:
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    """Sequential order token per IST calendar day (404-000001, 404-000002, …)."""
+    now = datetime.now(IST)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_start = today_start + timedelta(days=1)
+    today_start_utc = today_start.astimezone(timezone.utc)
+    tomorrow_start_utc = tomorrow_start.astimezone(timezone.utc)
+    date_lock_key = int(now.strftime("%Y%m%d"))
+
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:cafe_id, :day_key)"),
+        {"cafe_id": cafe_id, "day_key": date_lock_key},
+    )
+
     result = await db.execute(
-        select(func.count(Order.id)).where(Order.cafe_id == cafe_id, Order.created_at >= today_start)
+        select(func.count(Order.id)).where(
+            Order.cafe_id == cafe_id,
+            Order.created_at >= today_start_utc,
+            Order.created_at < tomorrow_start_utc,
+        )
     )
     count = result.scalar_one() or 0
     return f"404-{count + 1:06d}"

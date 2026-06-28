@@ -28,7 +28,7 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cafe_id: Mapped[int] = mapped_column(ForeignKey("cafes.id"), nullable=False, index=True)
-    order_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    order_number: Mapped[str] = mapped_column(String(20), nullable=False)
     customer_name: Mapped[str] = mapped_column(String(120), nullable=False)
     customer_phone: Mapped[str | None] = mapped_column(String(20))
     customer_email: Mapped[str | None] = mapped_column(String(255))
